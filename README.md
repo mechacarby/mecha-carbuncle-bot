@@ -1,7 +1,7 @@
 # Mecha Carbuncle
 Discord bot designed for managing FFXIV raids and other schedules
 
-<img src="mecha_carby.png"  width="300" height="300"/>
+<img src="mecha_carby.png"  width="300" height="300">
 
 # Commands
 
