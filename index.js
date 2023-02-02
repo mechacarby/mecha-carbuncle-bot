@@ -2,9 +2,7 @@ const { mode, dev_token, token } = require('./config.json');
 const { Client, Collection, Events, GatewayIntentBits } = require('discord.js');
 const client = new Client({ 
 	intents: [
-		GatewayIntentBits.Guilds, 
-		GatewayIntentBits.MessageContent,
-		GatewayIntentBits.GuildVoiceStates,
+		GatewayIntentBits.Guilds
 	]
 });
 const fs = require('node:fs');
@@ -29,22 +27,31 @@ for (const file of commandFiles) {
 }
 
 client.on(Events.InteractionCreate, async interaction => {
-	if (!(interaction.isChatInputCommand() || interaction.isMessageContextMenuCommand() || interaction.isAutocomplete())) return;
+	if (!(
+		interaction.isChatInputCommand() || 
+		interaction.isMessageContextMenuCommand() || 
+		interaction.isAutocomplete() 
+		)) return;
 	
+	let callback;
+
+
 	const command = interaction.client.commands.get(interaction.commandName);
 
 	if (!command) {
 		console.error(`No command matching ${interaction.commandName} was found.`);
 		return;
 	}
+
 	
+	if (interaction.isChatInputCommand() || interaction.isMessageContextMenuCommand()) {
+		callback = command.execute;
+	} else if (interaction.isAutocomplete()) {
+		callback = command.autocomplete;
+	}
 	
 	try {
-		if (interaction.isChatInputCommand() || interaction.isMessageContextMenuCommand()) {
-			await command.execute(interaction);
-		} else if (interaction.isAutocomplete()) {
-			await command.autocomplete(interaction);
-		}
+		callback(interaction);
 	} catch (error) {
 		console.error(error);
 		if (!interaction.replied) {
@@ -55,11 +62,6 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.once(Events.ClientReady, c => {
-    const tables = require('./data.js');
-    for (const table in tables) {
-        table.sync();
-    }
-
 	console.log(`Ready! Logged in as ${c.user.tag}`);
 });
 
