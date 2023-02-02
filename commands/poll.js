@@ -118,7 +118,6 @@ module.exports = {
 
 			collector.on('collect', async i => {
 
-
 				if (role_to_ping) {
 					if (!i.member.roles.cache.has(role_to_ping.id)) {
 						await i.reply({content: "That poll is not for you!", ephemeral: true});
@@ -134,8 +133,8 @@ module.exports = {
 				}
 
 				const pollEmbed = new EmbedBuilder()
-				.setColor(0x0099FF)
-				.setTitle(poll_title)
+					.setColor(0x0099FF)
+					.setTitle(poll_title)
 
 
 				let total = 0;
@@ -146,8 +145,6 @@ module.exports = {
 						data.users = data.users.filter(item => item !== i.user.id);
 					}
 
-					console.log(results.get(key))
-					console.log(results.get(key)?.users);
 					let field_text = `${results.get(key)?.users.length}`
 
 					if (interaction.options.getBoolean('show_users')) {
@@ -166,9 +163,6 @@ module.exports = {
 				if (interaction.options.getInteger('max_votes') && total >= interaction.options.getInteger('max_votes') ){
 					collector.stop();
 				}
-
-				//console.log(i);
-				//i.reply(`${result["value"]}: ${result["users"].length}`);
 			});
 			
 			collector.on('end', async collected => {
