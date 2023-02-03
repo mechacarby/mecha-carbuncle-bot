@@ -2,14 +2,16 @@ const { REST, Routes } = require('discord.js');
 const { mode, clientId, dev_clientId, token, dev_token } = require('./config.json');
 const fs = require('node:fs');
 
-let use_token, use_clientId
+let use_token, use_clientId;
 if (mode == 'dev') {
 	use_token = dev_token;
 	use_clientId = dev_clientId;
-} else if (mode == 'prod') {
+}
+else if (mode == 'prod') {
 	use_token = token;
 	use_clientId = clientId;
-} else {
+}
+else {
 	throw new Error(`Unknown run mode ${mode}`);
 }
 
@@ -38,7 +40,8 @@ const rest = new REST({ version: '10' }).setToken(use_token);
 		);
 
 		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
-	} catch (error) {
+	}
+	catch (error) {
 		// And of course, make sure you catch and log any errors!
 		console.error(error);
 	}
