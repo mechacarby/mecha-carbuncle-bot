@@ -1,6 +1,47 @@
 const { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder,
 	TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 
+
+function create_poll_embed(results, interaction, submitted) {
+
+	const poll_title = interaction.options.getString('title') ?? 'Poll';
+	const pollEmbed = new EmbedBuilder()
+		.setColor(0x0099FF)
+		.setTitle(poll_title);
+
+
+	let time_limit = interaction.options.getNumber('time_limit');
+	if (time_limit) {
+		time_limit = time_limit * 60;
+		pollEmbed.addFields(
+			{ name: 'Poll ends', value: `<t:${Math.floor(submitted.createdTimestamp / 1000) + time_limit}:R>` },
+		);
+	}
+	let total = 0;
+	for (const [key, data] of results.entries()) {
+
+		let field_text = `${results.get(key)?.users?.length}`;
+		const user_list = results.get(key)?.users;
+
+		if (interaction.options.getBoolean('show_users') && user_list) {
+			if (user_list.length > 0) field_text += ' - ';
+			for (const userId of user_list.slice(0, 10)) {
+				field_text += `<@${userId}>`;
+			}
+		}
+
+		pollEmbed.addFields({ name: data['value'], value: field_text });
+		total += results.get(key)?.users?.length ?? 0;
+	}
+	pollEmbed.addFields({ name: 'Total Votes', value: `${total}` });
+	const max_votes = interaction.options.getInteger('max_votes');
+	if (max_votes) {
+		pollEmbed.addFields({ name: 'Remaining Votes', value: `${max_votes - total}` });
+	}
+	return pollEmbed;
+}
+
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('poll')
@@ -65,29 +106,29 @@ module.exports = {
 
 		// Get the Modal Submit Interaction that is emitted once the User submits the Modal
 		const submitted = await interaction.awaitModalSubmit({
-			// Timeout after a minute of not receiving any valid Modals
-			time: 60000,
+			// Timeout after 5 minutes of not receiving any valid Modals
+			time: 300000,
 			// Make sure we only accept Modals from the User who sent the original Interaction we're responding to
 			filter: i => i.user.id === interaction.user.id,
 		}).catch(error => {
-			// Catch any Errors that are thrown (e.g. if the awaitModalSubmit times out after 60000 ms)
+			// Catch any Errors that are thrown
 			console.error(error);
-			return null;
+			return;
 		});
 
 		if (submitted) {
 			const role_to_ping = interaction.options.getRole('role') ?? false;
-			const poll_title = interaction.options.getString('title') ?? 'Poll';
 
-			const pollEmbed = new EmbedBuilder()
-				.setColor(0x0099FF)
-				.setTitle(poll_title);
+			const results = new Map();
 
 			const row = new ActionRowBuilder();
-			const results = new Map();
+
+			if (!(submitted.fields?.fields)) {
+				return;
+			}
+
 			for (const data of submitted.fields.fields.values()) {
-				pollEmbed.addFields({ name: data.value, value: '0' });
-				results.set(`${data.value}-${data.customId}`, {
+				results.set(`${data.customId}`, {
 					'value': data.value,
 					'users': [],
 				});
@@ -100,9 +141,15 @@ module.exports = {
 			}
 
 			const title = role_to_ping ? `Poll for ${role_to_ping}` : undefined;
+			try {
+				await submitted.reply({ content: title, embeds: [create_poll_embed(results, interaction, submitted)], components: [row] });
+			}
+			catch (error) {
+				console.log(error);
+			}
 
-			await submitted.reply({ content: title, embeds: [pollEmbed], components: [row] });
 
+			// Setup collector to handle poll inputs
 			const message = await submitted.fetchReply();
 
 			let time_limit = interaction.options.getNumber('time_limit');
@@ -114,48 +161,41 @@ module.exports = {
 			collector.on('collect', async i => {
 
 				if (role_to_ping) {
-					if (!i.member.roles.cache.has(role_to_ping.id)) {
-						await i.reply({ content: 'That poll is not for you!', ephemeral: true });
+					if (!i?.member?.roles?.cache?.has(role_to_ping.id)) {
+						try {
+							await i.reply({ content: 'That poll is not for you!', ephemeral: true });
+						}
+						catch (error) {
+							console.error(error);
+						}
 						return;
 					}
 				}
 
+				// Toggle a users inclusion in the choice the clicked on
 				const result = results.get(i.customId);
-				if (!result.users.includes(i.user.id)) {
+				if (!(result.users.includes(i.user.id))) {
 					result.users.push(i.user.id);
 				}
 				else {
 					result.users = result.users.filter(item => item !== i.user.id);
 				}
 
-				const newPollEmbed = new EmbedBuilder()
-					.setColor(0x0099FF)
-					.setTitle(poll_title);
-
-
+				// If multi select is not enabled, remove the use from other choices they have made.
 				let total = 0;
-
 				for (const [key, data] of results.entries()) {
-					// If multi select is not enabled, remove the use from other choices they have made.
-					if (!(interaction.options.getBoolean('multiselect') ?? false) && key != i.customId) {
+					total += results.get(key)?.users?.length ?? 0;
+					if (!(interaction.options.getBoolean('multiselect') ?? false) && (key != i.customId)) {
 						data.users = data.users.filter(item => item !== i.user.id);
 					}
-
-					let field_text = `${results.get(key)?.users.length}`;
-					const user_list = results.get(key)?.users;
-
-					if (interaction.options.getBoolean('show_users') && user_list) {
-						field_text += ' - ';
-						for (const userId of user_list.slice(0, 10)) {
-							field_text += `<@${userId}>`;
-						}
-					}
-
-					newPollEmbed.addFields({ name: data['value'], value: field_text });
-					total = total + results.get(key)?.users.length;
 				}
 
-				await i.update({ embeds: [newPollEmbed] });
+				try {
+					await i.update({ embeds: [create_poll_embed(results, interaction, submitted)] });
+				}
+				catch (error) {
+					console.log(error);
+				}
 
 				if (interaction.options.getInteger('max_votes') && total >= interaction.options.getInteger('max_votes')) {
 					collector.stop();
@@ -163,9 +203,8 @@ module.exports = {
 			});
 
 			collector.on('end', async collected => {
-				const last_message = collected.last();
 				try {
-					await last_message.editReply({ components: [] });
+					message.edit({ components: [] });
 				}
 				catch (error) {
 					console.error(error);
