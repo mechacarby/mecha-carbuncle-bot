@@ -97,7 +97,7 @@ async function attach_collector(message, poll) {
 			return;
 		}
 
-		if (poll.role && !(i?.member?.roles?.cache?.find(r => r.id === poll.role))) {
+		if (poll.role && !(i?.member?.roles?.cache?.some(r => r.id === poll.role))) {
 			try {
 				await i.reply({ content: 'That poll is not for you!', ephemeral: true });
 			}
