@@ -63,8 +63,20 @@ client.on(Events.InteractionCreate, async interaction => {
 
 });
 
-client.once(Events.ClientReady, c => {
+client.once(Events.ClientReady, async c => {
 	console.log(`Ready! Logged in as ${c.user.tag}`);
+	for (const [commandName, command] of client.commands) {
+		if ('reAttach' in command) {
+			try {
+				console.log(`Reattaching /${commandName}`);
+				await command.reAttach(client);
+			}
+			catch (error) {
+				console.log(`Error trying to re-attach data for command ${command.name}`);
+				console.log(error);
+			}
+		}
+	}
 });
 
 // Log in to Discord with your client's token

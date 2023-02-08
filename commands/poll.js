@@ -1,46 +1,200 @@
 const { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder,
 	TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 
+const { Op } = require('sequelize');
 
-function create_poll_embed(results, interaction, submitted) {
+const { Poll, Question, Response, sequelize } = require('../data.js');
 
-	const poll_title = interaction.options.getString('title') ?? 'Poll';
+async function create_poll_embed(poll, ended = false) {
+
 	const pollEmbed = new EmbedBuilder()
 		.setColor(0x0099FF)
-		.setTitle(poll_title);
+		.setTitle(ended ? `${poll.title} (ended)` : poll.title);
 
 
-	let time_limit = interaction.options.getNumber('time_limit');
-	if (time_limit) {
-		time_limit = time_limit * 60;
+	const ends_at = poll.ends_at;
+	if (ends_at) {
 		pollEmbed.addFields(
-			{ name: 'Poll ends', value: `<t:${Math.floor(submitted.createdTimestamp / 1000) + time_limit}:R>` },
+			{ name: `Poll ${ended ? 'ended' : 'ends'}`, value: `<t:${Math.floor(ends_at / 1000)}:R>` },
 		);
 	}
-	let total = 0;
-	for (const [key, data] of results.entries()) {
 
-		let field_text = `${results.get(key)?.users?.length}`;
-		const user_list = results.get(key)?.users;
+	if (!poll.hide_results || (poll.hide_results == 'hide' && ended)) {
+		for (const question of poll.questions) {
 
-		if (interaction.options.getBoolean('show_users') && user_list) {
-			if (user_list.length > 0) field_text += ' - ';
-			for (const userId of user_list.slice(0, 10)) {
-				field_text += `<@${userId}>`;
+			let field_text = `${question.responses.length}`;
+
+			const MAX_USERS = 20;
+
+			if (poll.show_users && question.responses.length > 0) {
+				field_text += ` - <@${question.responses[0].user_id}>`;
+				for (const response of question.responses.slice(1, MAX_USERS)) {
+					field_text += `, <@${response.user_id}>`;
+				}
+				if (question.responses.length > MAX_USERS) field_text += ', ...';
 			}
-		}
 
-		pollEmbed.addFields({ name: data['value'], value: field_text });
-		total += results.get(key)?.users?.length ?? 0;
+			pollEmbed.addFields({ name: question.value, value: field_text });
+		}
 	}
+
+	const total = await Response.count({
+		where: {
+			'$question.poll.id$': poll.id,
+		},
+		distinct: true,
+		col: 'user_id',
+		include: { all: true, nested: true },
+	});
+
 	pollEmbed.addFields({ name: 'Total Votes', value: `${total}` });
-	const max_votes = interaction.options.getInteger('max_votes');
-	if (max_votes) {
+	const max_votes = poll.max_votes;
+	if (max_votes && !ended) {
 		pollEmbed.addFields({ name: 'Remaining Votes', value: `${max_votes - total}` });
 	}
 	return pollEmbed;
 }
 
+async function end_poll(message, poll) {
+	try {
+		if (poll.hide_results == 'hideall') {
+			poll.hide_results = null;
+			message.interaction.user?.send({ embeds: [await create_poll_embed(poll, true)] });
+		}
+		message.edit({ embeds: [await create_poll_embed(poll, true)], components: [] });
+		await poll.destroy();
+	}
+	catch (error) {
+		console.error(error);
+	}
+}
+
+async function attach_collector(message, poll) {
+	// console.log(message);
+
+	const time_remaining = poll.ends_at - Date.now();
+	if (poll.ends_at && time_remaining < 0) {
+		await end_poll(message, poll);
+	}
+	const collet_time = poll.ends_at ? time_remaining : undefined;
+
+	const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: collet_time });
+
+	collector.on('collect', async i => {
+
+		if (i.customId == 'stop') {
+			if (i.user.id == message.interaction.user.id) {
+				collector.stop();
+			}
+			else {
+				try {
+					await i.reply({ content: 'You can\' do that!', ephemeral: true });
+				}
+				catch (error) {
+					console.error(error);
+				}
+			}
+			return;
+		}
+
+		if (poll.role && !(i?.member?.roles?.cache?.find(r => r.id === poll.role))) {
+			try {
+				await i.reply({ content: 'That poll is not for you!', ephemeral: true });
+			}
+			catch (error) {
+				console.error(error);
+			}
+			return;
+		}
+
+		const t = await sequelize.transaction();
+
+		try {
+
+			// TODO: Redo as Quesions?
+
+			const question = await Question.findOne({
+				where: {
+					custom_id: i.customId,
+					pollId: poll.id,
+				},
+			});
+
+			// Toggle a users inclusion in the choice the clicked on
+
+			const response = await question.getResponses({
+				where: {
+					user_id: i.user.id,
+				},
+			});
+
+			if (response[0]) {
+				await response[0].destroy({});
+			}
+			else {
+				await question.createResponse({
+					user_id: i.user.id,
+				});
+			}
+
+
+			// If multi select is not enabled, remove the use from other choice(s) they have made.
+
+			if (!poll.multiselect) {
+				const old_responses = await Response.findAll({
+					where: {
+						'user_id': i.user.id,
+					},
+					include: {
+						model: Question,
+						where: {
+							[Op.and] : {
+								custom_id: {
+									[Op.ne]: i.customId,
+								},
+								pollId: poll.id,
+							},
+						},
+						required: true,
+					},
+				});
+				for (const old_response of old_responses) {
+					old_response.destroy();
+				}
+			}
+
+			await poll.reload({
+				include: { all: true, nested: true },
+			});
+
+			await i.update({ embeds: [await create_poll_embed(poll)] });
+
+			if (poll.max_votes) {
+				const total = await Response.count({
+					where: {
+						'$question.poll.id$': poll.id,
+					},
+					distinct: true,
+					col: 'user_id',
+					include: { all: true, nested: true },
+				});
+
+				if (total >= poll.max_votes) collector.stop();
+			}
+
+			t.commit();
+		}
+		catch (error) {
+			console.log(error);
+			await t.rollback();
+		}
+	});
+
+	collector.on('end', async () => {
+		end_poll(message, poll);
+		// console.log(`Collected ${collected.size} interactions.`);
+	});
+}
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -77,6 +231,14 @@ module.exports = {
 		.addBooleanOption(option => option
 			.setName('show_users')
 			.setDescription('Show who has voted for a poll'),
+		)
+		.addStringOption(option => option
+			.setName('hide_results')
+			.setDescription('hide votes until the vote has ended or entirely')
+			.addChoices(
+				{ name: 'Hide votes until poll is concluded', value: 'hide' },
+				{ name: 'Only show votes to you', value: 'hideall' },
+			),
 		),
 	async execute(interaction) {
 		const modal = new ModalBuilder()
@@ -93,6 +255,7 @@ module.exports = {
 				.setCustomId(`pollinput${i}`)
 			// The label is the prompt the user sees for this input
 				.setLabel(`Choice ${i + 1}`)
+				.setValue(`Option ${i + 1}`)
 			// Short means only a single line of text
 				.setStyle(TextInputStyle.Short);
 
@@ -117,9 +280,14 @@ module.exports = {
 		});
 
 		if (submitted) {
-			const role_to_ping = interaction.options.getRole('role') ?? false;
-
-			const results = new Map();
+			const role_to_ping = interaction.options.getRole('role') ?? null ;
+			const poll_title = interaction.options.getString('title') ?? 'Poll';
+			const time_limit = interaction.options.getNumber('time_limit') ?? null;
+			const ends_at = (time_limit && submitted.createdTimestamp) ? submitted.createdTimestamp + time_limit * 60000 : null;
+			const show_users = interaction.options.getBoolean('show_users') ?? false;
+			const max_votes = interaction.options.getInteger('max_votes') ?? null;
+			const multiselect = interaction.options.getBoolean('multiselect') ?? false;
+			const hide_results = interaction.options.getString('hide_results') ?? null;
 
 			const row = new ActionRowBuilder();
 
@@ -128,10 +296,6 @@ module.exports = {
 			}
 
 			for (const data of submitted.fields.fields.values()) {
-				results.set(`${data.customId}`, {
-					'value': data.value,
-					'users': [],
-				});
 				row.addComponents(
 					new ButtonBuilder()
 						.setCustomId(`${data.customId}`)
@@ -140,78 +304,79 @@ module.exports = {
 				);
 			}
 
-			const title = role_to_ping ? `Poll for ${role_to_ping}` : undefined;
+			const header = role_to_ping ? `Poll for ${role_to_ping}` : undefined;
+
+			const poll = await Poll.create({
+				guild_id: interaction.guildId,
+				channel_id: interaction.channelId,
+				title: poll_title,
+				ends_at: ends_at,
+				show_users: show_users,
+				multiselect: multiselect,
+				max_votes: max_votes,
+				role: role_to_ping?.id ?? null,
+				hide_results: hide_results,
+			});
+
+			for (const data of submitted.fields.fields.values()) {
+				await poll.createQuestion({
+					'custom_id' : data.customId,
+					'value': data.value,
+				});
+			}
+
+			await poll.reload({
+				include: { all: true, nested: true },
+			});
+
+			let message;
 			try {
-				await submitted.reply({ content: title, embeds: [create_poll_embed(results, interaction, submitted)], components: [row] });
+				await submitted.reply({ content: header, embeds: [await create_poll_embed(poll)], components: [
+					row,
+					new ActionRowBuilder().addComponents(
+						new ButtonBuilder()
+							.setCustomId('stop')
+							.setLabel('Stop Poll')
+							.setStyle(ButtonStyle.Danger),
+					),
+				] });
+				message = await submitted.fetchReply();
+			}
+			catch (error) {
+				await poll.destroy();
+				console.log(error);
+				return;
+			}
+
+			// Save created poll to database
+			poll.message_id = message.id;
+			await poll.save();
+
+
+			// Setup collector to handle poll inputs
+			try {
+				await attach_collector(message, poll);
 			}
 			catch (error) {
 				console.log(error);
 			}
-
-
-			// Setup collector to handle poll inputs
-			const message = await submitted.fetchReply();
-
-			let time_limit = interaction.options.getNumber('time_limit');
-			if (time_limit) {
-				time_limit = time_limit * 60000;
-			}
-			const collector = message.createMessageComponentCollector({ componentType: ComponentType.Button, time: time_limit });
-
-			collector.on('collect', async i => {
-
-				if (role_to_ping) {
-					if (!i?.member?.roles?.cache?.has(role_to_ping.id)) {
-						try {
-							await i.reply({ content: 'That poll is not for you!', ephemeral: true });
-						}
-						catch (error) {
-							console.error(error);
-						}
-						return;
-					}
-				}
-
-				// Toggle a users inclusion in the choice the clicked on
-				const result = results.get(i.customId);
-				if (!(result.users.includes(i.user.id))) {
-					result.users.push(i.user.id);
-				}
-				else {
-					result.users = result.users.filter(item => item !== i.user.id);
-				}
-
-				// If multi select is not enabled, remove the use from other choices they have made.
-				let total = 0;
-				for (const [key, data] of results.entries()) {
-					total += results.get(key)?.users?.length ?? 0;
-					if (!(interaction.options.getBoolean('multiselect') ?? false) && (key != i.customId)) {
-						data.users = data.users.filter(item => item !== i.user.id);
-					}
-				}
-
-				try {
-					await i.update({ embeds: [create_poll_embed(results, interaction, submitted)] });
-				}
-				catch (error) {
-					console.log(error);
-				}
-
-				if (interaction.options.getInteger('max_votes') && total >= interaction.options.getInteger('max_votes')) {
-					collector.stop();
-				}
-			});
-
-			collector.on('end', async collected => {
-				try {
-					message.edit({ components: [] });
-				}
-				catch (error) {
-					console.error(error);
-				}
-				console.log(`Collected ${collected.size} interactions.`);
-			});
 		}
 
+	},
+	async reAttach(client) {
+		const polls = await Poll.findAll({ include:{ all: true, nested: true } });
+		console.log(`${polls.length} existing polls!`);
+		for (const existing_poll of polls) {
+			try {
+				const channel = await client.channels.fetch(existing_poll.channel_id);
+				const message = await channel.messages.fetch(existing_poll.message_id);
+				if (message.size) continue;
+
+				await attach_collector(message, existing_poll);
+			}
+			catch (error) {
+				console.log(error);
+			}
+		}
 	},
 };
