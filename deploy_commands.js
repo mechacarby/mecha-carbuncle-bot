@@ -2,6 +2,8 @@ const { REST, Routes } = require('discord.js');
 const { mode, clientId, dev_clientId, token, dev_token } = require('./config.json');
 const fs = require('node:fs');
 
+const reset = process.argv.includes('--reset') || process.argv.includes('-r');
+
 let use_token, use_clientId;
 if (mode == 'dev') {
 	use_token = dev_token;
@@ -15,18 +17,23 @@ else {
 	throw new Error(`Unknown run mode ${mode}`);
 }
 
-const commands = [];
+let commands = [];
 // Grab all the command files from the commands directory you created earlier
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 // Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
 for (const file of commandFiles) {
 	const command = require(`./commands/${file}`);
-	commands.push(command.data.toJSON());
+	if (command.ready_for.includes(mode)) {
+		console.log(`Adding /${command.data.name}`);
+		commands.push(command.data.toJSON());
+	}
 }
 
 // Construct and prepare an instance of the REST module
 const rest = new REST({ version: '10' }).setToken(use_token);
+
+if (reset) commands = [];
 
 // and deploy your commands!
 (async () => {
