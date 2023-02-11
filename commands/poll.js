@@ -88,7 +88,7 @@ async function attach_collector(message, poll) {
 			}
 			else {
 				try {
-					await i.reply({ content: 'You can\' do that!', ephemeral: true });
+					await i.reply({ content: 'You can\'t do that!', ephemeral: true });
 				}
 				catch (error) {
 					console.error(error);
