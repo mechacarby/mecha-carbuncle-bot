@@ -12,9 +12,16 @@ const options = { foreignKey: {
 } };
 
 const Schedule = require('./models/Schedules.js')(sequelize, Sequelize.DataTypes);
+const ScheduleRule = require('./models/ScheduleRules.js')(sequelize, Sequelize.DataTypes);
 const Event = require('./models/Events.js')(sequelize, Sequelize.DataTypes);
 
+Schedule.hasMany(ScheduleRule, options); ScheduleRule.belongsTo(Schedule);
+ScheduleRule.hasMany(Event, { foreignKey: {
+	allowNull: true,
+	onDelete: 'CASCADE',
+} }); Event.belongsTo(ScheduleRule);
 Schedule.hasMany(Event, options); Event.belongsTo(Schedule);
+
 
 const Poll = require('./models/Polls.js')(sequelize, Sequelize.DataTypes);
 const Question = require('./models/Questions.js')(sequelize, Sequelize.DataTypes);

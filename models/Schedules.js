@@ -6,9 +6,20 @@ module.exports = (sequelize, DataTypes) => {
 		},
 		name: {
 			type: DataTypes.STRING,
-			unique: true,
 			allowNull: false,
 			default: 'Raid',
+		},
+		role: {
+			type: DataTypes.STRING,
+			allowNull: true,
+		},
+		reminder_channel: {
+			type: DataTypes.STRING,
+			allowNull: false,
+		},
+		timezone: {
+			type: DataTypes.STRING,
+			allowNull: false,
 		},
 		reminder_24h: {
 			type: DataTypes.BOOLEAN,
