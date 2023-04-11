@@ -197,7 +197,7 @@ async function attach_collector(message, poll) {
 }
 
 module.exports = {
-	ready_for: ['dev'],
+	ready_for: ['dev', 'prod'],
 	data: new SlashCommandBuilder()
 		.setName('poll')
 		.setDescription('Create a poll')
