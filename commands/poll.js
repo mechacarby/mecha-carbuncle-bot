@@ -260,7 +260,7 @@ module.exports = {
 				.setCustomId(`pollinput${i}`)
 			// The label is the prompt the user sees for this input
 				.setLabel(`Choice ${i + 1}`)
-				.setValue(`Option ${i + 1}`)
+				// .setValue(`Option ${i + 1}`)
 			// Short means only a single line of text
 				.setStyle(TextInputStyle.Short);
 
