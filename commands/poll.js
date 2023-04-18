@@ -107,6 +107,8 @@ async function attach_collector(message, poll) {
 			return;
 		}
 
+		await i.deferUpdate();
+
 		const t = await sequelize.transaction();
 
 		try {
@@ -167,7 +169,7 @@ async function attach_collector(message, poll) {
 				include: { all: true, nested: true },
 			});
 
-			await i.update({ embeds: [await create_poll_embed(poll)] });
+			await i.editReply({ embeds: [await create_poll_embed(poll)] });
 
 			if (poll.max_votes) {
 				const total = await Response.count({
@@ -185,8 +187,8 @@ async function attach_collector(message, poll) {
 			t.commit();
 		}
 		catch (error) {
-			console.log(error);
 			await t.rollback();
+			console.error(error);
 		}
 	});
 
@@ -266,19 +268,28 @@ module.exports = {
 			modal.addComponents(new ActionRowBuilder().addComponents(choice_input));
 
 		}
+		console.log('Pre Shown!');
+
 		await interaction.showModal(modal);
 
+		console.log('Shown!');
+
 		// Get the Modal Submit Interaction that is emitted once the User submits the Modal
-		const submitted = await interaction.awaitModalSubmit({
-			// Timeout after 5 minutes of not receiving any valid Modals
-			time: 300000,
-			// Make sure we only accept Modals from the User who sent the original Interaction we're responding to
-			filter: i => i.user.id === interaction.user.id,
-		}).catch(error => {
+		let submitted;
+		try {
+			submitted = await interaction.awaitModalSubmit({
+				// Timeout after 5 minutes of not receiving any valid Modals
+				time: 300000,
+				// Make sure we only accept Modals from the User who sent the original Interaction we're responding to
+				filter: i => i.user.id === interaction.user.id,
+			});
+			console.log(submitted);
+		}
+		catch (error) {
 			// Catch any Errors that are thrown
 			console.error(error);
 			return;
-		});
+		}
 
 		if (submitted) {
 			const role_to_ping = interaction.options.getRole('role') ?? null ;
@@ -345,7 +356,7 @@ module.exports = {
 			}
 			catch (error) {
 				await poll.destroy();
-				console.log(error);
+				console.error(error);
 				return;
 			}
 
@@ -359,7 +370,7 @@ module.exports = {
 				await attach_collector(message, poll);
 			}
 			catch (error) {
-				console.log(error);
+				console.error(error);
 			}
 		}
 
@@ -376,7 +387,7 @@ module.exports = {
 				await attach_collector(message, existing_poll);
 			}
 			catch (error) {
-				console.log(error);
+				console.error(error);
 			}
 		}
 	},
