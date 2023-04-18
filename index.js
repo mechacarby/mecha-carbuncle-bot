@@ -72,12 +72,25 @@ client.once(Events.ClientReady, async c => {
 				await command.reAttach(client);
 			}
 			catch (error) {
-				console.log(`Error trying to re-attach data for command ${command.name}`);
-				console.log(error);
+				console.error(`Error trying to re-attach data for command ${command.name}`);
+				console.error(error);
 			}
 		}
 	}
 });
+
+process.on('unhandledRejection', async (err) => {
+	console.error('Unhandled Promise Rejection:\n', err);
+});
+process.on('uncaughtException', async (err) => {
+	console.error('Uncaught Promise Exception:\n', err);
+});
+process.on('uncaughtExceptionMonitor', async (err) => {
+	console.error('Uncaught Promise Exception (Monitor):\n', err);
+});
+// process.on('multipleResolves', (type, promise, reason) => {
+// 	console.error('Multiple Resolves:\n', type, promise, reason);
+// });
 
 // Log in to Discord with your client's token
 if (mode == 'dev') {
