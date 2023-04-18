@@ -244,6 +244,8 @@ module.exports = {
 			),
 		),
 	async execute(interaction) {
+		// await interaction.deferReply();
+
 		const modal = new ModalBuilder()
 			.setCustomId(`create_poll-${interaction.id}`)
 			.setTitle('Create poll');
@@ -268,11 +270,8 @@ module.exports = {
 			modal.addComponents(new ActionRowBuilder().addComponents(choice_input));
 
 		}
-		console.log('Pre Shown!');
 
 		await interaction.showModal(modal);
-
-		console.log('Shown!');
 
 		// Get the Modal Submit Interaction that is emitted once the User submits the Modal
 		let submitted;
@@ -283,7 +282,6 @@ module.exports = {
 				// Make sure we only accept Modals from the User who sent the original Interaction we're responding to
 				filter: i => i.user.id === interaction.user.id,
 			});
-			console.log(submitted);
 		}
 		catch (error) {
 			// Catch any Errors that are thrown
