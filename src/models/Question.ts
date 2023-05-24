@@ -1,5 +1,5 @@
-import { Poll } from './Polls'
-import { Response } from './Responses'
+import { Poll } from './Poll'
+import { Response } from './Response'
 import { Table, Column, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
 @Table

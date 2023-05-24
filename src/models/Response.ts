@@ -1,5 +1,5 @@
 import { Snowflake } from 'discord.js';
-import { Question } from './Questions'
+import { Question } from './Question'
 import { Table, Column, Model, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
 

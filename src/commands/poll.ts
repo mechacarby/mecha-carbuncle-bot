@@ -4,11 +4,11 @@ import { Op } from 'sequelize';
 
 import { sequelize } from '../data';
 
-import { Poll } from '../models/Polls';
+import { Poll } from '../models/Poll';
 
-import { Question } from '../models/Questions';
+import { Question } from '../models/Question';
 
-import { Response } from '../models/Responses';
+import { Response } from '../models/Response';
 
 
 async function create_poll_embed(poll: Poll, ended = false) {
