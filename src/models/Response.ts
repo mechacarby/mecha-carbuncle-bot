@@ -2,7 +2,7 @@ import { Snowflake } from 'discord.js';
 import { Question } from './Question'
 import { Table, Column, Model, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
-
+@Table
 export class Response extends Model {
 	
 	@AllowNull(false)
@@ -14,7 +14,6 @@ export class Response extends Model {
 	@Column
 	questionId: number;
 
-	@AllowNull(false)
 	@BelongsTo(() => Question)
 	question: Question
 

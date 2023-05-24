@@ -1,4 +1,4 @@
-import { mode, dev_token, token } from '../config.json';
+import { mode, dev_token, token } from './config.json';
 import { Client, Collection, CommandInteraction, Events, GatewayIntentBits, SlashCommandBuilder } from 'discord.js';
 class commandClient<T extends boolean> extends Client<T> {
 	commands?: Collection<string, any>

@@ -18,7 +18,6 @@ export class Question extends Model {
 	@Column
 	pollId: number;
 
-	@AllowNull(false)
 	@BelongsTo(() => Poll)
 	poll: Poll;
 
