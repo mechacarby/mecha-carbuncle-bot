@@ -1,18 +1,24 @@
-const { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder,
-	TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+import { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType, Client, Message, CommandInteraction, ChatInputCommandInteraction, GuildMember, GuildMemberManager, GuildMemberRoleManager, CollectedInteraction, Collection, Snowflake } from 'discord.js';
 
-const { Op } = require('sequelize');
+import { Op } from 'sequelize';
 
-const { Poll, Question, Response, sequelize } = require('../data.js');
+import { sequelize } from '../data';
 
-async function create_poll_embed(poll, ended = false) {
+import { Poll } from '../models/Polls';
+
+import { Question } from '../models/Questions';
+
+import { Response } from '../models/Responses';
+
+
+async function create_poll_embed(poll: Poll, ended = false) {
 
 	const pollEmbed = new EmbedBuilder()
 		.setColor(0x0099FF)
 		.setTitle(ended ? `${poll.title} (ended)` : poll.title);
 
 
-	const ends_at = poll.ends_at;
+	const ends_at = Number(poll.ends_at);
 	if (ends_at) {
 		pollEmbed.addFields(
 			{ name: `Poll ${ended ? 'ended' : 'ends'}`, value: `<t:${Math.floor(ends_at / 1000)}:R>` },
@@ -55,11 +61,11 @@ async function create_poll_embed(poll, ended = false) {
 	return pollEmbed;
 }
 
-async function end_poll(message, poll) {
+async function end_poll(message: Message, poll: Poll) {
 	try {
 		if (poll.hide_results == 'hideall') {
 			poll.hide_results = null;
-			message.interaction.user?.send({ embeds: [await create_poll_embed(poll, true)] });
+			message?.interaction?.user?.send({ embeds: [await create_poll_embed(poll, true)] });
 		}
 		message.edit({ embeds: [await create_poll_embed(poll, true)], components: [] });
 		await poll.destroy();
@@ -69,10 +75,10 @@ async function end_poll(message, poll) {
 	}
 }
 
-async function attach_collector(message, poll) {
+async function attach_collector(message: Message, poll: Poll) {
 	// console.log(message);
 
-	const time_remaining = poll.ends_at - Date.now();
+	const time_remaining = Number(poll.ends_at) - Date.now();
 	if (poll.ends_at && time_remaining < 0) {
 		await end_poll(message, poll);
 	}
@@ -83,7 +89,7 @@ async function attach_collector(message, poll) {
 	collector.on('collect', async i => {
 
 		if (i.customId == 'stop') {
-			if (i.user.id == message.interaction.user.id) {
+			if (i.user.id == message?.interaction?.user.id) {
 				collector.stop();
 			}
 			else {
@@ -97,14 +103,26 @@ async function attach_collector(message, poll) {
 			return;
 		}
 
-		if (poll.role && !(i?.member?.roles?.cache?.some(r => r.id === poll.role))) {
-			try {
-				await i.reply({ content: 'That poll is not for you!', ephemeral: true });
+		
+		if (poll.role) {
+			const all_roles = i?.member?.roles;
+			let role_list: Array<Snowflake> | undefined;
+			
+			if (all_roles instanceof GuildMemberRoleManager) {
+				role_list = all_roles?.cache?.map(r => r.id);
+			} else {
+				role_list = all_roles;
 			}
-			catch (error) {
-				console.error(error);
-			}
-			return;
+
+			if (!role_list?.some(r => r === poll.role)){				
+				try {
+					await i.reply({ content: 'That poll is not for you!', ephemeral: true });
+				}
+				catch (error) {
+					console.error(error);
+				}
+				return;
+			}	
 		}
 
 		await i.deferUpdate();
@@ -122,9 +140,13 @@ async function attach_collector(message, poll) {
 				},
 			});
 
+			if (!question) {
+				return; // Somehow errored?
+			}
+
 			// Toggle a users inclusion in the choice the clicked on
 
-			const response = await question.getResponses({
+			const response = await question.$get('responses', {
 				where: {
 					user_id: i.user.id,
 				},
@@ -134,7 +156,7 @@ async function attach_collector(message, poll) {
 				await response[0].destroy({});
 			}
 			else {
-				await question.createResponse({
+				await question.$create('response', {
 					user_id: i.user.id,
 				});
 			}
@@ -243,7 +265,7 @@ module.exports = {
 				{ name: 'Only show votes to you', value: 'hideall' },
 			),
 		),
-	async execute(interaction) {
+	async execute(interaction: ChatInputCommandInteraction) {
 		// await interaction.deferReply();
 
 		const modal = new ModalBuilder()
@@ -267,7 +289,7 @@ module.exports = {
 
 			// An action row only holds one text input,
 			// so you need one action row per text input.
-			modal.addComponents(new ActionRowBuilder().addComponents(choice_input));
+			modal.addComponents(new ActionRowBuilder<TextInputBuilder>().addComponents(choice_input));
 
 		}
 
@@ -299,7 +321,7 @@ module.exports = {
 			const multiselect = interaction.options.getBoolean('multiselect') ?? false;
 			const hide_results = interaction.options.getString('hide_results') ?? null;
 
-			const row = new ActionRowBuilder();
+			const row = new ActionRowBuilder<ButtonBuilder>();
 
 			if (!(submitted.fields?.fields)) {
 				return;
@@ -329,7 +351,7 @@ module.exports = {
 			});
 
 			for (const data of submitted.fields.fields.values()) {
-				await poll.createQuestion({
+				await poll.$create('question', {
 					'custom_id' : data.customId,
 					'value': data.value,
 				});
@@ -340,10 +362,11 @@ module.exports = {
 			});
 
 			let message;
+			
 			try {
 				await submitted.reply({ content: header, embeds: [await create_poll_embed(poll)], components: [
 					row,
-					new ActionRowBuilder().addComponents(
+					new ActionRowBuilder<ButtonBuilder>().addComponents(
 						new ButtonBuilder()
 							.setCustomId('stop')
 							.setLabel('Stop Poll')
@@ -373,14 +396,14 @@ module.exports = {
 		}
 
 	},
-	async reAttach(client) {
+	async reAttach(client: Client<true>) {
 		const polls = await Poll.findAll({ include:{ all: true, nested: true } });
 		console.log(`${polls.length} existing polls!`);
 		for (const existing_poll of polls) {
 			try {
 				const channel = await client.channels.fetch(existing_poll.channel_id);
-				const message = await channel.messages.fetch(existing_poll.message_id);
-				if (message.size) continue;
+				if (!channel?.isTextBased()) return;
+				const message = await channel?.messages.fetch(existing_poll.message_id);
 
 				await attach_collector(message, existing_poll);
 			}

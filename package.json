@@ -24,10 +24,12 @@
   "dependencies": {
     "discord.js": "^14.7.1",
     "sequelize": "^6.28.0",
+    "sequelize-typescript": "^2.1.5",
     "sqlite3": "^5.1.4"
   },
   "devDependencies": {
     "@types/node": "^18.15.13",
+    "@types/sqlite3": "^3.1.8",
     "@typescript-eslint/parser": "^5.59.0",
     "eslint": "^8.33.0",
     "ts-node": "^10.9.1",
