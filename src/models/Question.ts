@@ -2,7 +2,7 @@ import { Poll } from './Poll'
 import { Response } from './Response'
 import { Table, Column, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
-@Table
+@Table({timestamps: false})
 export class Question extends Model {
 	
 	@AllowNull(false)

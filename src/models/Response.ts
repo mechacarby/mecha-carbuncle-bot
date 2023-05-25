@@ -2,7 +2,7 @@ import { Snowflake } from 'discord.js';
 import { Question } from './Question'
 import { Table, Column, Model, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
-@Table
+@Table({timestamps: false})
 export class Response extends Model {
 	
 	@AllowNull(false)

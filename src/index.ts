@@ -10,7 +10,6 @@ const client: commandClient<boolean> = new Client({
 });
 import fs from 'node:fs';
 import path from 'node:path';
-import { Col } from 'sequelize/types/utils';
 
 
 type CommandDefinition = {
@@ -24,7 +23,7 @@ type CommandDefinition = {
 let commands = new Collection<string, CommandDefinition>();
 
 const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
 
 for (const file of commandFiles) {
 	const filePath = path.join(commandsPath, file);
