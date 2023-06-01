@@ -1,17 +1,17 @@
-import { Poll } from './Poll'
-import { Response } from './Response'
+import { Poll } from './Poll';
+import { Response } from './Response';
 import { Table, Column, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
-@Table({timestamps: false})
+@Table({ timestamps: false })
 export class Question extends Model {
-	
+
 	@AllowNull(false)
 	@Column
 	value: string;
 
 	@AllowNull(false)
 	@Column
-	custom_id : string
+	custom_id : string;
 
 	@AllowNull(false)
 	@ForeignKey(() => Poll)
