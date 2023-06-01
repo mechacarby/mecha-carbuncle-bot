@@ -1,5 +1,7 @@
-module.exports = (sequelize, DataTypes) => {
-	return sequelize.define('schedules', {
+import { Table, Column, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
+
+@Table
+export class Schedule {
 		guild_id: {
 			type: DataTypes.STRING,
 			allowNull: false,
