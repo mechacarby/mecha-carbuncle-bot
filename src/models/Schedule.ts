@@ -1,50 +1,45 @@
-import { Table, Column, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
+import { Table, Column, Default, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 
-@Table
+@Table({
+	timestamps: false,
+})
 export class Schedule {
-		guild_id: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		name: {
-			type: DataTypes.STRING,
-			allowNull: false,
-			default: 'Raid',
-		},
-		role: {
-			type: DataTypes.STRING,
-			allowNull: true,
-		},
-		reminder_channel: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		timezone: {
-			type: DataTypes.STRING,
-			allowNull: false,
-		},
-		reminder_24h: {
-			type: DataTypes.BOOLEAN,
-			default: false,
-		},
-		reminder_12h: {
-			type: DataTypes.BOOLEAN,
-			default: false,
-		},
-		reminder_1h: {
-			type: DataTypes.BOOLEAN,
-			default: false,
-		},
-		reminder_0h: {
-			type: DataTypes.BOOLEAN,
-			default: true,
-		},
-		repeats: {
-			type: DataTypes.BOOLEAN,
-			default: false,
-		},
-	}, {
-		timestamps: false,
-	});
 
-};
+	@AllowNull(false)
+	@Column
+	guild_id: string
+	
+	@AllowNull(false)
+	@Default('Raid')
+	@Column
+	name: string
+
+	@Column
+	role: string
+
+	@Column
+	reminder_channel: string
+
+	@Column
+	timezone: string
+
+	@Default(false)
+	@Column
+	reminder_24h: boolean
+
+	@Default(false)
+	@Column
+	reminder_12h: boolean
+
+	@Default(false)
+	@Column
+	reminder_1h: boolean
+
+	@Default(true)
+	@Column
+	reminder_0h: boolean
+
+	@Default(false)
+	@Column
+	repeats: boolean
+}
