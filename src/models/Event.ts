@@ -1,20 +1,30 @@
 import { Table, Column, Default, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
+import { ScheduleRule } from './ScheduleRule';
+
 
 @Table({
 	timestamps: false,
 })
-export class Event {
+export class Event extends Model {
 	@Column
-	date_time: Date
+	date_time: Date;
 
 	@Default(false)
 	@Column
-	modified: number
+	modified: boolean;
 		
 	@Default(false)
 	@Column
-	canceled: number
+	canceled: boolean;
 	
 	@Column
-	reason: string
+	reason: string;
+
+	@AllowNull(false)
+	@ForeignKey(() => ScheduleRule)
+	@Column
+	scheduleRuleId: number
+
+	@BelongsTo(() => ScheduleRule)
+	scheduleRule: ScheduleRule;
 }
