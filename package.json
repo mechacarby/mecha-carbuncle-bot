@@ -4,8 +4,9 @@
   "description": "Discord bot designed for managing FFXIV raids and other schedules",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+    "start": "ts-node ./src/index.ts",
+    "deploy": "ts-node ./src/deploy_commands.ts"
+  }, 
   "repository": {
     "type": "git",
     "url": "git+https://github.com/mechacarby/mecha-carbuncle-bot.git"
@@ -24,9 +25,16 @@
   "dependencies": {
     "discord.js": "^14.7.1",
     "sequelize": "^6.28.0",
+    "sequelize-typescript": "^2.1.5",
     "sqlite3": "^5.1.4"
   },
   "devDependencies": {
-    "eslint": "^8.33.0"
+    "@types/node": "^18.15.13",
+    "@types/sqlite3": "^3.1.8",
+    "@typescript-eslint/parser": "^5.59.0",
+    "eslint": "^8.33.0",
+    "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.0.4"
   }
 }
