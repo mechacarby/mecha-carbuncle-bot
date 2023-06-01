@@ -4,7 +4,8 @@
   "description": "Discord bot designed for managing FFXIV raids and other schedules",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node ./src/index.ts"
+    "start": "ts-node ./src/index.ts",
+    "deploy": "ts-node ./src/deploy_commands.ts"
   }, 
   "repository": {
     "type": "git",

@@ -1,6 +1,8 @@
-const { REST, Routes } = require('discord.js');
-const { mode, clientId, dev_clientId, token, dev_token } = require('./config.json');
-const fs = require('node:fs');
+import { mode, clientId, dev_clientId, token, dev_token } from './config.json';
+import { REST, Routes } from 'discord.js';
+import { assert } from 'node:console';
+import fs from 'node:fs';
+import path from 'node:path'
 
 const reset = process.argv.includes('--reset') || process.argv.includes('-r');
 
@@ -19,12 +21,13 @@ else {
 
 let commands = [];
 // Grab all the command files from the commands directory you created earlier
-const file_list: string[] = fs.readdirSync('./commands')
-const commandFiles = file_list.filter(file => file.endsWith('.js'));
+const command_path = path.join(__dirname, 'commands');
+const file_list: string[] = fs.readdirSync(command_path)
+const commandFiles = file_list.filter(file => file.endsWith('.ts'));
 
 // Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
 for (const file of commandFiles) {
-	const command = require(`./commands/${file}`);
+	const command = require(path.join(command_path, file));
 	if (command.ready_for.includes(mode)) {
 		console.log(`Adding /${command.data.name}`);
 		commands.push(command.data.toJSON());
@@ -45,7 +48,7 @@ if (reset) commands = [];
 		const data = await rest.put(
 			Routes.applicationCommands(use_clientId),
 			{ body: commands },
-		);
+		) as Object[];
 
 		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
 	}
