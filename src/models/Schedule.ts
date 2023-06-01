@@ -1,4 +1,4 @@
-import { Table, Column, Default, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
+import { Table, Column, Default, Model, HasMany, AllowNull } from 'sequelize-typescript';
 import { ScheduleRule } from './ScheduleRule';
 
 @Table({
@@ -9,7 +9,7 @@ export class Schedule extends Model {
 	@AllowNull(false)
 	@Column
 	guild_id: string;
-	
+
 	@AllowNull(false)
 	@Default('Raid')
 	@Column

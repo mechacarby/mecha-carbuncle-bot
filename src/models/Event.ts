@@ -1,4 +1,4 @@
-import { Table, Column, Default, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
+import { Table, Column, Default, Model, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 import { ScheduleRule } from './ScheduleRule';
 
 
@@ -12,18 +12,18 @@ export class Event extends Model {
 	@Default(false)
 	@Column
 	modified: boolean;
-		
+
 	@Default(false)
 	@Column
 	canceled: boolean;
-	
+
 	@Column
 	reason: string;
 
 	@AllowNull(false)
 	@ForeignKey(() => ScheduleRule)
 	@Column
-	scheduleRuleId: number
+	scheduleRuleId: number;
 
 	@BelongsTo(() => ScheduleRule)
 	scheduleRule: ScheduleRule;

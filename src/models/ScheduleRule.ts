@@ -1,11 +1,9 @@
-import { Table, Column, Default, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
+import { Table, Column, Model, HasMany, BelongsTo, AllowNull, ForeignKey } from 'sequelize-typescript';
 import { Schedule } from './Schedule';
 import { Event } from './Event';
 
-@Table({
-	timestamps: false,
-})
-export class ScheduleRule extends Model{
+@Table({ timestamps: false })
+export class ScheduleRule extends Model {
 
 	@AllowNull(false)
 	@Column
