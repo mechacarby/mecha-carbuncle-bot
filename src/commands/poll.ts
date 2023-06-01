@@ -1,4 +1,6 @@
-import { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle, EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType, Client, Message, CommandInteraction, ChatInputCommandInteraction, GuildMember, GuildMemberManager, GuildMemberRoleManager, CollectedInteraction, Collection, Snowflake } from 'discord.js';
+import { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle,
+	EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType, Client, Message, CommandInteraction,
+	ChatInputCommandInteraction, GuildMember, GuildMemberManager, GuildMemberRoleManager, CollectedInteraction, Collection, Snowflake } from 'discord.js';
 
 import { Op } from 'sequelize';
 
@@ -103,18 +105,19 @@ async function attach_collector(message: Message, poll: Poll) {
 			return;
 		}
 
-		
+
 		if (poll.role) {
 			const all_roles = i?.member?.roles;
 			let role_list: Array<Snowflake> | undefined;
-			
+
 			if (all_roles instanceof GuildMemberRoleManager) {
 				role_list = all_roles?.cache?.map(r => r.id);
-			} else {
+			}
+			else {
 				role_list = all_roles;
 			}
 
-			if (!role_list?.some(r => r === poll.role)){				
+			if (!role_list?.some(r => r === poll.role)) {
 				try {
 					await i.reply({ content: 'That poll is not for you!', ephemeral: true });
 				}
@@ -122,7 +125,7 @@ async function attach_collector(message: Message, poll: Poll) {
 					console.error(error);
 				}
 				return;
-			}	
+			}
 		}
 
 		await i.deferUpdate();
@@ -141,7 +144,8 @@ async function attach_collector(message: Message, poll: Poll) {
 			});
 
 			if (!question) {
-				return; // Somehow errored?
+				// Somehow errored?
+				return;
 			}
 
 			// Toggle a users inclusion in the choice the clicked on
@@ -362,7 +366,7 @@ module.exports = {
 			});
 
 			let message;
-			
+
 			try {
 				await submitted.reply({ content: header, embeds: [await create_poll_embed(poll)], components: [
 					row,
