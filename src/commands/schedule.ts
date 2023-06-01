@@ -1,5 +1,5 @@
-const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
-const { Schedule } = require('../data.js');
+import { SlashCommandBuilder, EmbedBuilder, ChannelType } from 'discord.js';
+import { sequelize } from '../data';
 
 function create_reminder_embed(user) {
 	const reminder_embed = new EmbedBuilder()
