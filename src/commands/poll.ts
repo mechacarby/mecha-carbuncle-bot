@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, ModalBuilder, ActionRowBuilder, TextInputBuilder, TextInputStyle,
-	EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType, Client, Message, CommandInteraction,
-	ChatInputCommandInteraction, GuildMember, GuildMemberManager, GuildMemberRoleManager, CollectedInteraction, Collection, Snowflake } from 'discord.js';
+	EmbedBuilder, ButtonBuilder, ButtonStyle, ComponentType, Client, Message,
+	ChatInputCommandInteraction, GuildMemberRoleManager, Snowflake } from 'discord.js';
 
 import { Op } from 'sequelize';
 

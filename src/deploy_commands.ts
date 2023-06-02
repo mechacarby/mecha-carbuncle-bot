@@ -1,8 +1,7 @@
 import { mode, clientId, dev_clientId, token, dev_token } from './config.json';
 import { REST, Routes } from 'discord.js';
-import { assert } from 'node:console';
 import fs from 'node:fs';
-import path from 'node:path'
+import path from 'node:path';
 
 const reset = process.argv.includes('--reset') || process.argv.includes('-r');
 
@@ -22,7 +21,7 @@ else {
 let commands = [];
 // Grab all the command files from the commands directory you created earlier
 const command_path = path.join(__dirname, 'commands');
-const file_list: string[] = fs.readdirSync(command_path)
+const file_list: string[] = fs.readdirSync(command_path);
 const commandFiles = file_list.filter(file => file.endsWith('.ts'));
 
 // Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
@@ -48,7 +47,7 @@ if (reset) commands = [];
 		const data = await rest.put(
 			Routes.applicationCommands(use_clientId),
 			{ body: commands },
-		) as Object[];
+		) as object[];
 
 		console.log(`Successfully reloaded ${data.length} application (/) commands.`);
 	}

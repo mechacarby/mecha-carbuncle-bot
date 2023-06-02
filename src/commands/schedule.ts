@@ -1,7 +1,8 @@
-import { SlashCommandBuilder, EmbedBuilder, ChannelType } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, ChannelType, SlashCommandIntegerOption, CommandInteraction, Interaction, ChatInputCommandInteraction, AutocompleteInteraction, SlashCommandSubcommandBuilder, SlashCommandSubcommandGroupBuilder } from 'discord.js';
 import { sequelize } from '../data';
+import { Schedule } from '../models/Schedule';
 
-function create_reminder_embed(user) {
+function create_reminder_embed(user: string) {
 	const reminder_embed = new EmbedBuilder()
 		.setColor(0x0099FF)
 		.setTitle('Testing Title ')
@@ -12,7 +13,28 @@ function create_reminder_embed(user) {
 		;
 	return reminder_embed;
 }
-const commands = {
+
+interface CommandBuilderFunction {
+	commands: string[];
+	options: {
+		[optionName: string]: {
+			(c: SlashCommandSubcommandBuilder): SlashCommandSubcommandBuilder
+		}
+	}
+}
+
+interface CommandStructure {
+	description: string;
+	subcommands: {
+		[sucommandName: string]: string
+	}
+	attributes: CommandBuilderFunction[];
+	subcommandgroups?: {
+		[groupName: string]: CommandStructure;
+	}
+}
+
+const commands: {[commandName: string]: CommandStructure} = {
 	schedule: {
 		description: 'Manage event schedules',
 		subcommands: {
@@ -284,7 +306,7 @@ const commands = {
 		},
 	},
 };
-function create_command(name, command, built_command = null) {
+function create_command(name: string, command: CommandStructure, built_command: SlashCommandBuilder | SlashCommandSubcommandGroupBuilder | undefined = undefined) {
 	built_command ??= new SlashCommandBuilder();
 	built_command
 		.setName(name)
@@ -303,16 +325,17 @@ function create_command(name, command, built_command = null) {
 								subcommand = a.options[optionname](subcommand);
 							}
 						});
-					subcommand.options.sort((a, b) => b.required - a.required);
+					subcommand.options.sort((a, b) => Number(b.required) - Number(a.required));
 					return subcommand;
 				}
 			);
 		}
 	}
-	if ('subcommandgroups' in command) {
-		for (const subcommandgroup in command.subcommandgroups) {
+	if ('subcommandgroups' in command && built_command instanceof SlashCommandBuilder) {
+		const groups = command.subcommandgroups;
+		for (const subcommandgroup in groups) {
 			built_command.addSubcommandGroup(group =>
-				create_command(subcommandgroup, command.subcommandgroups[subcommandgroup], group)
+				create_command(subcommandgroup, groups[subcommandgroup], group) as SlashCommandSubcommandGroupBuilder
 			);
 		}
 	}
@@ -326,7 +349,7 @@ module.exports = {
 		'schedule',
 		commands.schedule,
 	),
-	async execute(interaction) {
+	async execute(interaction: ChatInputCommandInteraction) {
 		const subcommand = interaction.options.getSubcommand();
 		if (subcommand == 'new') {
 			await interaction.reply({
@@ -335,11 +358,11 @@ module.exports = {
 			});
 		}
 	},
-	async autocomplete(interaction) {
+	async autocomplete(interaction: AutocompleteInteraction) {
 		const focusedOption = interaction.options.getFocused(true);
 		const subcommand = interaction.options.getSubcommand();
-		let choices;
-		let common_choices;
+		let choices: string[] = [];
+		let common_choices: string[] = [];
 
 		if (focusedOption.name === 'timezone') {
 			common_choices = [
@@ -352,12 +375,11 @@ module.exports = {
 			];
 			choices = Intl.supportedValuesOf('timeZone');
 		}
-
-		if (focusedOption.name === 'name' && ['edit'].includes(subcommand)) {
+		else if (focusedOption.name === 'name' && ['edit'].includes(subcommand)) {
 			choices = (await Schedule.findAll({
 				raw: true,
 				attributes: ['name'],
-				where: { 'guild_id': interaction.guild_id },
+				where: { 'guild_id': interaction.guildId },
 			})).map(x => x.name);
 		}
 

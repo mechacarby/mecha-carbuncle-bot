@@ -1,9 +1,7 @@
 import { mode, dev_token, token } from './config.json';
-import { Client, Collection, CommandInteraction, Events, GatewayIntentBits, SlashCommandBuilder } from 'discord.js';
-class commandClient<T extends boolean> extends Client<T> {
-	commands?: Collection<string, any>
-}
-const client: commandClient<boolean> = new Client({
+import { AutocompleteInteraction, ChatInputCommandInteraction, Client, Collection, CommandInteraction, Events, GatewayIntentBits, SlashCommandBuilder } from 'discord.js';
+
+const client = new Client({
 	intents: [
 		GatewayIntentBits.Guilds,
 	],
@@ -12,15 +10,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 
-type CommandDefinition = {
+interface CommandDefinition {
 	data: SlashCommandBuilder;
-	execute: Function;
+	execute: {(interaction: ChatInputCommandInteraction): void};
 	ready_for: string[];
-	autocomplete?: Function;
-	reAttach?: Function;
+	autocomplete?: {(interaction: AutocompleteInteraction): void};
+	reAttach?: {(arg: Client): void};
 }
 
-let commands = new Collection<string, CommandDefinition>();
+const commands = new Collection<string, CommandDefinition>();
 
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.ts'));
@@ -40,11 +38,8 @@ for (const file of commandFiles) {
 client.on(Events.InteractionCreate, async interaction => {
 	if (!(
 		interaction.isChatInputCommand() ||
-		interaction.isMessageContextMenuCommand() ||
 		interaction.isAutocomplete()
 	)) return;
-
-	let callback;
 
 
 	const command = commands.get(interaction.commandName);
@@ -55,22 +50,18 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 
 
-	if (interaction.isChatInputCommand() || interaction.isMessageContextMenuCommand()) {
-		callback = command.execute;
-	}
-	else if (interaction.isAutocomplete()) {
-		callback = command.autocomplete;
-	}
-
-	if (callback){
-		try {
-			callback(interaction);
+	try {
+		if (interaction.isChatInputCommand() && command.execute) {
+			command.execute(interaction);
 		}
-		catch (error) {
-			console.error(error);
-			if (interaction instanceof CommandInteraction && !interaction.replied) {
-				await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-			}
+		else if (interaction.isAutocomplete() && command.autocomplete) {
+			command.autocomplete(interaction);
+		}
+	}
+	catch (error) {
+		console.error(error);
+		if (interaction instanceof CommandInteraction && !interaction.replied) {
+			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
 		}
 	}
 
