@@ -1,4 +1,4 @@
-const { sequelize } = require('./data.js');
+import { sequelize } from './data';
 
 const force = process.argv.includes('--force') || process.argv.includes('-f');
 
